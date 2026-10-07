@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mixplore Tea Catcher</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-outfit { font-family: 'Outfit', sans-serif; }
+        
+        /* Shake animation for trap hits */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0); }
+            20% { transform: translate(-8px, 4px); }
+            40% { transform: translate(8px, -4px); }
+            60% { transform: translate(-5px, 2px); }
+            80% { transform: translate(5px, -2px); }
+        }
+        .shake { animation: shake 0.3s ease-in-out; }
+
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-6px) rotate(3deg); }
+        }
+        .bounce-gentle { animation: float-gentle 2.5s infinite ease-in-out; }
+
+        /* Lock touch scrolling on game canvas area */
+        #gameCanvas {
+            touch-action: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-2 sm:p-4 select-none">
+
+    <!-- GAME CONTAINER -->
+    <div class="relative w-full max-w-sm h-[640px] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-slate-800 flex flex-col justify-between">
+        
+        <!-- TOP NAVBAR / HUD -->
+        <div id="hudBar" class="hidden relative z-10 bg-slate-950/80 backdrop-blur-md px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
+            <!-- Score & Target -->
+            <div class="flex flex-col">
+                <span class="text-[10px] uppercase tracking-wider font-extrabold text-teal-400">Poin Saya</span>
+                <div class="flex items-baseline gap-1">
+                    <span id="scoreText" class="font-outfit text-2xl font-black text-amber-400">0</span>
+                    <span class="text-[11px] font-bold text-slate-400">/ 120</span>
+                </div>
+            </div>
+
+            <!-- Timer Display -->
+            <div class="flex flex-col items-center">
+                <span class="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Sisa Waktu</span>
+                <span id="timerText" class="font-outfit text-2xl font-black text-white">15s</span>
+            </div>
+
+            <!-- Lives Display -->
+            <div class="flex flex-col items-end">
+                <span class="text-[10px] uppercase tracking-wider font-extrabold text-rose-400">Nyawa</span>
+                <div id="livesContainer" class="flex gap-1 text-sm mt-0.5">
+                    <i class="fas fa-heart text-red-500"></i>
+                    <i class="fas fa-heart text-red-500"></i>
+                    <i class="fas fa-heart text-red-500"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- TARGET PROGRESS BAR -->
+        <div id="progressContainer" class="hidden relative z-10 w-full bg-slate-950/90 h-2 px-3 pt-1 border-b border-slate-800">
+            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-emerald-400 via-teal-300 to-amber-300 h-full w-0 transition-all duration-200"></div>
+            </div>
+            <div class="flex justify-between items-center text-[9px] font-extrabold text-slate-400 mt-0.5">
+                <span>0 Poin</span>
+                <span id="speedLevelText" class="text-amber-300 hidden">⚡ SPEED UP</span>
+                <span class="text-emerald-400">Target 120 Poin</span>
+            </div>
+        </div>
+
+        <!-- CANVAS GAMEPLAY AREA -->
+        <div class="relative flex-1 w-full h-full overflow-hidden bg-gradient-to-b from-slate-900 via-teal-950/40 to-slate-950">
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+            <!-- START SCREEN OVERLAY -->
+            <div id="startScreen" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-between p-4 text-center z-20">
+                <div class="my-auto flex flex-col items-center w-full">
+                    
+                    <!-- Hero Illustration -->
+                    <div class="relative my-1 bounce-gentle">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 via-emerald-500 to-amber-400 flex items-center justify-center shadow-lg transform rotate-3 border-2 border-white/40 p-3">
+                            <i class="fas fa-glass-water text-3xl text-slate-950"></i>
+                        </div>
+                    </div>
+
+                    <h2 class="font-outfit text-2xl font-black text-white mt-1.5 tracking-tight leading-tight">
+                        TANTANGAN EXTREME <br>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-emerald-300 to-teal-200">ES TEH GRATIS!</span>
+                    </h2>
+                    
+                    <p class="text-[11px] text-teal-100/90 mt-1 max-w-xs leading-relaxed">
+                        Kumpulkan <strong class="text-amber-300 font-extrabold">120 Poin</strong> dalam <strong class="text-emerald-300 font-extrabold">15 Detik</strong>! <br>
+                        <span class="text-amber-300/90 font-bold">⚠️ Waspadai Angin Kencang (💨) & Racikan Licin!</span>
+                    </p>
+
+                    <!-- Limit Info Badge -->
+                    <div class="mt-2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 rounded-full px-3 py-1 text-[10px] font-black tracking-wider uppercase flex items-center justify-center gap-1.5">
+                        <i class="fas fa-gamepad"></i> GESER KIRI/KANAN UNTUK MAIN!
+                    </div>
+
+                    <!-- Item Points Legend Grid -->
+                    <div class="grid grid-cols-2 gap-1.5 w-full max-w-xs mt-3 text-left text-[10px]">
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 flex items-center gap-2">
+                            <span class="text-lg">🍃🧊🍋</span>
+                            <div>
+                                <div class="font-bold text-emerald-300">+10 Poin</div>
+                                <div class="text-[9px] text-slate-400">Bahan Segar</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 flex items-center gap-2">
+                            <span class="text-lg">⭐</span>
+                            <div>
+                                <div class="font-bold text-amber-300">+25 Poin</div>
+                                <div class="text-[9px] text-slate-400">Bintang Bonus</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 flex items-center gap-2">
+                            <span class="text-lg">💣🌶️</span>
+                            <div>
+                                <div class="font-bold text-rose-400">-10 / -20 & Nyawa</div>
+                                <div class="text-[9px] text-slate-400">Bahaya Jebakan</div>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 flex items-center gap-2">
+                            <span class="text-lg">🧪</span>
+                            <div>
+                                <div class="font-bold text-purple-300">-20 Poin & Licin</div>
+                                <div class="text-[9px] text-slate-400">Air Mentah</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Start Button -->
+                    <button id="startBtn" class="mt-4 w-full max-w-xs bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-300 hover:brightness-110 text-slate-950 font-black py-3 px-6 rounded-2xl text-sm shadow-xl shadow-teal-950/50 transition transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer border border-white/50">
+                        <i class="fas fa-play text-slate-950"></i> MULAI MAIN SEKARANG!
+                    </button>
+                </div>
+
+                <!-- Footer info -->
+                <div class="flex items-center justify-between w-full text-[10px] text-slate-500 pt-2 border-t border-slate-800/80">
+                    <button id="termsBtn" class="hover:text-teal-300 underline">Syarat & Ketentuan</button>
+                    <button id="soundBtn" class="flex items-center gap-1 hover:text-teal-300">
+                        <i id="soundIcon" class="fas fa-volume-up text-xs"></i> Suara
+                    </button>
+                </div>
+            </div>
+
+            <!-- WIN SCREEN OVERLAY -->
+            <div id="winScreen" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-5 text-center z-30">
+                <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/40 rounded-3xl p-5 shadow-2xl w-full max-w-xs text-white">
+                    <div class="w-14 h-14 bg-emerald-500/20 border border-emerald-400/50 rounded-2xl flex items-center justify-center mx-auto text-emerald-400 text-3xl mb-2">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    
+                    <span class="bg-emerald-500/20 text-emerald-300 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider">TANTANGAN SELESAI!</span>
+                    
+                    <h3 class="font-outfit font-black text-xl text-white mt-1">SELAMAT! ANDA MENANG!</h3>
+                    <p class="text-[11px] text-slate-300 mt-1">Tunjukkan kode voucher berikut ke kasir Mixplore untuk klaim Es Teh Gratis Anda:</p>
+
+                    <!-- Voucher Display Card -->
+                    <div class="my-3 p-3 bg-slate-900 rounded-2xl border border-dashed border-emerald-400/60 flex flex-col items-center">
+                        <span class="text-[9px] uppercase tracking-widest text-slate-400 font-bold">KODE VOUCHER ES TEH</span>
+                        <div id="voucherCode" class="font-outfit font-black text-2xl tracking-wider text-amber-300 my-1">MIX-TEAH8</div>
+                        <span class="text-[9px] text-emerald-400 font-semibold"><i class="fas fa-check-circle mr-1"></i> Berlaku Hari Ini</span>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col gap-2">
+                        <button id="copyCodeBtn" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 border border-slate-700">
+                            <i class="fas fa-copy text-amber-400"></i> Salin Kode Voucher
+                        </button>
+                        <button id="playAgainBtn" class="bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 font-black py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-95 shadow-lg">
+                            <i class="fas fa-rotate-right"></i> Main Lagi
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LOSE SCREEN OVERLAY -->
+            <div id="loseScreen" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30">
+                <div class="bg-slate-900 rounded-3xl p-6 shadow-2xl w-full max-w-xs border border-slate-800 text-white">
+                    <div class="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-3xl flex items-center justify-center mx-auto text-amber-400 text-3xl mb-3">
+                        <i class="fas fa-heart-crack"></i>
+                    </div>
+                    
+                    <h3 class="font-outfit font-black text-2xl text-white">Hampir Berhasil!</h3>
+                    <p class="text-xs text-slate-400 mt-1">Skor Akhir Anda:</p>
+                    <div id="finalScoreText" class="font-outfit text-4xl font-black text-amber-400 my-1">0</div>
+                    <p class="text-[11px] text-slate-400">Target: <strong class="text-emerald-400">120 Poin</strong> dalam 15 Detik.</p>
+
+                    <button id="retryBtn" class="mt-4 w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black py-3 px-6 rounded-xl text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fas fa-rotate-right"></i> Coba Lagi
+                    </button>
+                </div>
+            </div>
+
+            <!-- TERMS & CONDITIONS MODAL -->
+            <div id="termsModal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-40">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 w-full max-w-xs text-left text-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h4 class="font-outfit font-extrabold text-base text-white">Syarat & Ketentuan</h4>
+                        <button id="closeTermsBtn" class="text-slate-400 hover:text-white p-1">
+                            <i class="fas fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+                    <ul class="text-[11px] space-y-2 text-slate-300 list-disc pl-4 leading-relaxed">
+                        <li>Kumpulkan minimal <strong class="text-amber-300">120 poin dalam 15 detik</strong> untuk memenangkan klaim voucher Es Teh Gratis.</li>
+                        <li>Voucher harus ditunjukkan kepada kasir outlet Mixplore resmi.</li>
+                        <li>Satu kode voucher hanya berlaku untuk satu transaksi.</li>
+                        <li>Promo berlaku selama persediaan bahan masih ada di toko.</li>
+                    </ul>
+                    <button id="closeTermsModalBtn" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs">
+                        Saya Mengerti
+                    </button>
+                </div>
+            </div>
+
+            <!-- TOAST NOTIFICATION -->
+            <div id="toast" class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl shadow-xl z-50 transition transform duration-300 flex items-center gap-2">
+                <i class="fas fa-check-circle"></i>
+                <span id="toastMsg">Pesan Toast</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME ENGINE JAVASCRIPT -->
+    <script>
+        // Configuration Constants
+        const TARGET_SCORE = 120;
+        const GAME_DURATION = 15; // seconds
+        
+        // Game State
+        let gameState = 'START';
+        let score = 0;
+        let lives = 3;
+        let timeLeft = GAME_DURATION;
+        let gameTimerInterval = null;
+        let animationFrameId = null;
+
+        // Dynamic Wind System
+        let windForce = 0;
+        let windTimer = 0;
+        let windDirectionText = "";
+
+        // Canvas Logical Dimensions
+        let gameWidth = 360;
+        let gameHeight = 600;
+
+        // Arrays
+        let floatingTexts = [];
+        let fallingItems = [];
+        let particles = [];
+        let lastSpawnTime = 0;
+        let baseSpawnInterval = 320; // Spawn interval slightly tightened for faster action
+
+        // Player Cup Setup (Original Size: 52px x 76px)
+        let cup = {
+            x: 0,
+            y: 0,
+            width: 52,
+            height: 76,
+            targetX: 0,
+            slipperyTimer: 0
+        };
+
+        // Item Definitions (Base speeds increased by ~20-25%)
+        const ITEM_TYPES = [
+            { type: 'tea', emoji: '🍃', points: 10, baseSpeed: 6.6, weight: 25, badgeBg: '#064e3b', badgeBorder: '#34d399', labelText: '+10', labelColor: '#34d399' },
+            { type: 'ice', emoji: '🧊', points: 10, baseSpeed: 7.0, weight: 25, badgeBg: '#0c4a6e', badgeBorder: '#38bdf8', labelText: '+10', labelColor: '#38bdf8' },
+            { type: 'lemon', emoji: '🍋', points: 10, baseSpeed: 6.4, weight: 10, badgeBg: '#713f12', badgeBorder: '#facc15', labelText: '+10', labelColor: '#facc15' },
+            { type: 'gold', emoji: '⭐', points: 25, baseSpeed: 8.0, weight: 6, badgeBg: '#78350f', badgeBorder: '#fbbf24', labelText: '+25★', labelColor: '#fbbf24' },
+            { type: 'chili', emoji: '🌶️', points: -10, baseSpeed: 7.2, weight: 14, isTrap: true, badgeBg: '#7f1d1d', badgeBorder: '#f87171', labelText: '-10', labelColor: '#f87171' },
+            { type: 'bomb', emoji: '💣', points: -20, baseSpeed: 7.6, weight: 10, isTrap: true, badgeBg: '#881337', badgeBorder: '#ef4444', labelText: 'BOM!', labelColor: '#ef4444' },
+            { type: 'toxic', emoji: '🧪', points: -20, baseSpeed: 6.8, weight: 10, isTrap: true, badgeBg: '#581c87', badgeBorder: '#c084fc', labelText: 'LICIN!', labelColor: '#c084fc' }
+        ];
+
+        // Web Audio Synthesizer
+        const sfx = {
+            ctx: null,
+            muted: false,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playCatch() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch(e) {}
+            },
+            playGold() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(587.33, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1174.66, this.ctx.currentTime + 0.18);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.18);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.18);
+                } catch(e) {}
+            },
+            playTrap() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.2);
+                } catch(e) {}
+            },
+            playWin() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + i * 0.08);
+                        gain.gain.setValueAtTime(0.25, now + i * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.2);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now + i * 0.08);
+                        osc.stop(now + i * 0.08 + 0.2);
+                    });
+                } catch(e) {}
+            }
+        };
+
+        // DOM Elements
+        let canvas, ctx;
+        let startScreen, winScreen, loseScreen, termsModal, hudBar, progressContainer, progressBar, scoreText, timerText, speedLevelText, livesContainer, finalScoreText, voucherCode;
+        let startBtn, retryBtn, playAgainBtn, copyCodeBtn, soundBtn, soundIcon, termsBtn, closeTermsBtn, closeTermsModalBtn;
+
+        function initDOMElements() {
+            canvas = document.getElementById('gameCanvas');
+            if (canvas) ctx = canvas.getContext('2d');
+
+            startScreen = document.getElementById('startScreen');
+            winScreen = document.getElementById('winScreen');
+            loseScreen = document.getElementById('loseScreen');
+            termsModal = document.getElementById('termsModal');
+            hudBar = document.getElementById('hudBar');
+            progressContainer = document.getElementById('progressContainer');
+            progressBar = document.getElementById('progressBar');
+            scoreText = document.getElementById('scoreText');
+            timerText = document.getElementById('timerText');
+            speedLevelText = document.getElementById('speedLevelText');
+            livesContainer = document.getElementById('livesContainer');
+            finalScoreText = document.getElementById('finalScoreText');
+            voucherCode = document.getElementById('voucherCode');
+
+            startBtn = document.getElementById('startBtn');
+            retryBtn = document.getElementById('retryBtn');
+            playAgainBtn = document.getElementById('playAgainBtn');
+            copyCodeBtn = document.getElementById('copyCodeBtn');
+            soundBtn = document.getElementById('soundBtn');
+            soundIcon = document.getElementById('soundIcon');
+            termsBtn = document.getElementById('termsBtn');
+            closeTermsBtn = document.getElementById('closeTermsBtn');
+            closeTermsModalBtn = document.getElementById('closeTermsModalBtn');
+        }
+
+        function resizeCanvas() {
+            if (!canvas || !ctx) return;
+            const rect = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : null;
+            if (!rect) return;
+
+            const dpr = window.devicePixelRatio || 1;
+            gameWidth = rect.width;
+            gameHeight = rect.height;
+
+            canvas.width = Math.round(rect.width * dpr);
+            canvas.height = Math.round(rect.height * dpr);
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+
+            // Dinaikkan posisi y cangkir (48px dari batas bawah) agar berdiri utuh & bebas terpotong
+            cup.y = gameHeight - cup.height - 48;
+            if (gameState === 'START') {
+                cup.x = gameWidth / 2 - cup.width / 2;
+                cup.targetX = cup.x;
+            }
+        }
+
+        function updateCupPosition(clientX) {
+            if (!canvas) return;
+            const rect = canvas.getBoundingClientRect();
+            const touchX = clientX - rect.left;
+            cup.targetX = touchX - cup.width / 2;
+        }
+
+        function attachEventListeners() {
+            if (canvas) {
+                // Pointer & Mouse
+                canvas.addEventListener('pointermove', (e) => {
+                    if (gameState === 'PLAYING') updateCupPosition(e.clientX);
+                });
+                canvas.addEventListener('pointerdown', (e) => {
+                    if (gameState === 'PLAYING') updateCupPosition(e.clientX);
+                });
+
+                // Touch handling with scroll prevention
+                canvas.addEventListener('touchstart', (e) => {
+                    if (gameState === 'PLAYING' && e.touches.length > 0) {
+                        e.preventDefault();
+                        updateCupPosition(e.touches[0].clientX);
+                    }
+                }, { passive: false });
+
+                canvas.addEventListener('touchmove', (e) => {
+                    if (gameState === 'PLAYING' && e.touches.length > 0) {
+                        e.preventDefault();
+                        updateCupPosition(e.touches[0].clientX);
+                    }
+                }, { passive: false });
+            }
+
+            // Keyboard Arrow Left/Right & A/D Keys
+            window.addEventListener('keydown', (e) => {
+                if (gameState !== 'PLAYING') return;
+                const speed = 28;
+                if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                    cup.targetX = Math.max(0, cup.targetX - speed);
+                } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                    cup.targetX = Math.min(gameWidth - cup.width, cup.targetX + speed);
+                }
+            });
+
+            // Action Buttons
+            if (startBtn) startBtn.addEventListener('click', startGame);
+            if (retryBtn) retryBtn.addEventListener('click', startGame);
+            if (playAgainBtn) playAgainBtn.addEventListener('click', startGame);
+            if (copyCodeBtn) copyCodeBtn.addEventListener('click', copyVoucherCode);
+
+            if (soundBtn) {
+                soundBtn.addEventListener('click', () => {
+                    sfx.init();
+                    sfx.muted = !sfx.muted;
+                    if (sfx.muted) {
+                        if (soundIcon) soundIcon.className = 'fas fa-volume-xmark text-sm text-red-300';
+                    } else {
+                        if (soundIcon) soundIcon.className = 'fas fa-volume-up text-sm';
+                    }
+                });
+            }
+
+            if (termsBtn) termsBtn.addEventListener('click', () => termsModal && termsModal.classList.remove('hidden'));
+            if (closeTermsBtn) closeTermsBtn.addEventListener('click', () => termsModal && termsModal.classList.add('hidden'));
+            if (closeTermsModalBtn) closeTermsModalBtn.addEventListener('click', () => termsModal && termsModal.classList.add('hidden'));
+        }
+
+        function addFloatingText(x, y, text, color) {
+            floatingTexts.push({ x: x, y: y, text: text, color: color, alpha: 1.0, vy: -2.0 });
+        }
+
+        function updateFloatingTexts() {
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 0.03;
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+        }
+
+        function drawFloatingTexts() {
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, ft.alpha);
+                ctx.font = '900 16px "Outfit", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+                ctx.lineWidth = 3;
+                ctx.strokeText(ft.text, ft.x, ft.y);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
+        }
+
+        function createSplashParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.7) * 6,
+                    radius: Math.random() * 4 + 2,
+                    color: color, alpha: 1.0
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.3;
+                p.alpha -= 0.05;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.alpha);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function getRandomItemType() {
+            const totalWeight = ITEM_TYPES.reduce((sum, item) => sum + item.weight, 0);
+            let random = Math.random() * totalWeight;
+            for (const item of ITEM_TYPES) {
+                if (random < item.weight) return item;
+                random -= item.weight;
+            }
+            return ITEM_TYPES[0];
+        }
+
+        function getDifficultyMultiplier() {
+            const scoreFactor = (score / TARGET_SCORE) * 1.15;
+            const timeFactor = ((GAME_DURATION - timeLeft) / GAME_DURATION) * 0.5;
+            return 1 + scoreFactor + timeFactor;
+        }
+
+        function spawnItem() {
+            const itemType = getRandomItemType();
+            const margin = 32;
+            const x = margin + Math.random() * (gameWidth - margin * 2);
+            const speedMultiplier = getDifficultyMultiplier();
+            
+            fallingItems.push({
+                x: x, y: -28,
+                type: itemType.type,
+                emoji: itemType.emoji,
+                points: itemType.points,
+                isTrap: itemType.isTrap,
+                badgeBg: itemType.badgeBg,
+                badgeBorder: itemType.badgeBorder,
+                labelText: itemType.labelText,
+                labelColor: itemType.labelColor,
+                speed: (itemType.baseSpeed * speedMultiplier) + (Math.random() * 0.8),
+                swayAmplitude: Math.random() > 0.3 ? (Math.random() * 2.2 + 1.0) : 0,
+                swaySpeed: Math.random() * 0.08 + 0.03,
+                swayOffset: Math.random() * Math.PI * 2,
+                size: 26
+            });
+        }
+
+        function checkCollisions() {
+            windTimer++;
+            if (windTimer > 180) {
+                if (Math.random() < 0.45) {
+                    windForce = (Math.random() - 0.5) * 3.8;
+                    windDirectionText = windForce > 0 ? "💨 ANGIN TIMUR (--->)" : "💨 ANGIN BARAT (<---)";
+                } else {
+                    windForce = 0;
+                    windDirectionText = "";
+                }
+                windTimer = 0;
+            }
+
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                const item = fallingItems[i];
+                item.y += item.speed;
+                item.x += Math.sin(item.y * item.swaySpeed + item.swayOffset) * item.swayAmplitude + windForce;
+
+                const cupTop = cup.y;
+                const cupBottom = cup.y + cup.height;
+                const cupLeft = cup.x;
+                const cupRight = cup.x + cup.width;
+
+                if (
+                    item.y + item.size / 2 >= cupTop &&
+                    item.y - item.size / 2 <= cupBottom &&
+                    item.x >= cupLeft - 4 &&
+                    item.x <= cupRight + 4
+                ) {
+                    if (item.type === 'bomb') {
+                        sfx.playTrap();
+                        lives--;
+                        score = Math.max(0, score + item.points);
+                        addFloatingText(item.x, item.y, '-20 💣', '#ef4444');
+                        createSplashParticles(item.x, item.y, '#dc2626');
+                        if (canvas.parentElement) {
+                            canvas.parentElement.classList.add('shake');
+                            setTimeout(() => canvas.parentElement.classList.remove('shake'), 300);
+                        }
+                    } else if (item.type === 'toxic') {
+                        sfx.playTrap();
+                        score = Math.max(0, score + item.points);
+                        cup.slipperyTimer = 80;
+                        addFloatingText(item.x, item.y, 'LICIN! 🧪', '#c084fc');
+                        createSplashParticles(item.x, item.y, '#a855f7');
+                        if (canvas.parentElement) {
+                            canvas.parentElement.classList.add('shake');
+                            setTimeout(() => canvas.parentElement.classList.remove('shake'), 300);
+                        }
+                    } else if (item.type === 'chili') {
+                        sfx.playTrap();
+                        lives--;
+                        score = Math.max(0, score + item.points);
+                        addFloatingText(item.x, item.y, '-10 🌶️', '#f97316');
+                        createSplashParticles(item.x, item.y, '#f97316');
+                        if (canvas.parentElement) {
+                            canvas.parentElement.classList.add('shake');
+                            setTimeout(() => canvas.parentElement.classList.remove('shake'), 300);
+                        }
+                    } else if (item.type === 'gold') {
+                        sfx.playGold();
+                        score += item.points;
+                        addFloatingText(item.x, item.y, '+25 ⭐', '#fbbf24');
+                        createSplashParticles(item.x, item.y, '#fbbf24');
+                    } else {
+                        sfx.playCatch();
+                        score += item.points;
+                        addFloatingText(item.x, item.y, `+${item.points}`, '#34d399');
+                        createSplashParticles(item.x, item.y, '#0d9488');
+                    }
+
+                    fallingItems.splice(i, 1);
+                    updateHUD();
+
+                    if (lives <= 0) {
+                        endGame(false);
+                        return;
+                    }
+                    continue;
+                }
+
+                if (item.y > gameHeight + 40) fallingItems.splice(i, 1);
+            }
+        }
+
+        function drawWindBanner() {
+            if (windForce !== 0) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                ctx.fillRect(0, 6, gameWidth, 28);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = '900 12px "Plus Jakarta Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(windDirectionText, gameWidth / 2, 25);
+                ctx.restore();
+            }
+        }
+
+        function drawItems() {
+            fallingItems.forEach(item => {
+                ctx.save();
+                const radius = item.size * 0.82;
+                
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, radius + 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = item.badgeBg;
+                ctx.fill();
+                ctx.strokeStyle = item.badgeBorder;
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                ctx.font = `${item.size * 0.9}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(item.emoji, item.x, item.y - 1);
+
+                ctx.font = '900 10px "Outfit", "Plus Jakarta Sans", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+                ctx.lineWidth = 2.5;
+                ctx.strokeText(item.labelText, item.x, item.y + radius + 10);
+                ctx.fillStyle = item.labelColor;
+                ctx.fillText(item.labelText, item.x, item.y + radius + 10);
+
+                ctx.restore();
+            });
+        }
+
+        function drawCup() {
+            const easing = cup.slipperyTimer > 0 ? 0.08 : 0.40;
+            if (cup.slipperyTimer > 0) cup.slipperyTimer--;
+
+            cup.x += (cup.targetX - cup.x) * easing;
+            // Batas pergerakan cangkir dijaga dengan margin 8px dari tepi canvas
+            cup.x = Math.max(8, Math.min(gameWidth - cup.width - 8, cup.x));
+
+            const x = cup.x;
+            const y = cup.y;
+            const w = cup.width;
+            const h = cup.height;
+
+            ctx.save();
+
+            // Efek aura saat terkena jebakan licin
+            if (cup.slipperyTimer > 0) {
+                ctx.strokeStyle = '#c084fc';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x - 4, y - 18, w + 8, h + 22);
+            }
+
+            // 1. Sedotan Merah-Putih (Tampak Utuh Melintas dari Atas Tutup Cangkir)
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.65, y + 4);
+            ctx.lineTo(x + w * 0.82, y - 18);
+            ctx.stroke();
+
+            // Garis Motif Sedotan
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.70, y - 2);
+            ctx.lineTo(x + w * 0.74, y - 8);
+            ctx.stroke();
+
+            // 2. Bodi Utama Gelas Plastik Transparan
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y + 4);
+            ctx.lineTo(x + w - 2, y + 4);
+            ctx.lineTo(x + w - 6, y + h);
+            ctx.lineTo(x + 6, y + h);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.fill();
+
+            // 3. Isian Es Teh Segar
+            ctx.beginPath();
+            ctx.moveTo(x + 4, y + 12);
+            ctx.lineTo(x + w - 4, y + 12);
+            ctx.lineTo(x + w - 7, y + h - 3);
+            ctx.lineTo(x + 7, y + h - 3);
+            ctx.closePath();
+            ctx.fillStyle = '#d97706';
+            ctx.fill();
+
+            // 4. Es Batu Di Dalam Teh
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillRect(x + 8, y + 18, 9, 9);
+            ctx.fillRect(x + w - 17, y + 24, 9, 9);
+            ctx.fillRect(x + 13, y + 44, 8, 8);
+
+            // 5. Ring Tutup Cangkir (Cup Rim)
+            ctx.fillStyle = '#0d9488';
+            ctx.fillRect(x - 3, y - 1, w + 6, 7);
+            ctx.fillStyle = '#14b8a6';
+            ctx.fillRect(x - 2, y, w + 3, 3);
+
+            // 6. Garis Tepi/Outline Cangkir
+            ctx.beginPath();
+            ctx.moveTo(x + 2, y + 4);
+            ctx.lineTo(x + w - 2, y + 4);
+            ctx.lineTo(x + w - 6, y + h);
+            ctx.lineTo(x + 6, y + h);
+            ctx.closePath();
+            ctx.strokeStyle = '#0f766e';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 7. Badge Branding & Tulisan "MIXPLORE" Tebal & Jelas
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x + 3, y + 28, w - 6, 18, 4);
+            } else {
+                ctx.rect(x + 3, y + 28, w - 6, 18);
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = '900 10px "Outfit", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('MIXPLORE', x + w / 2, y + 37);
+
+            ctx.restore();
+        }
+
+        function render(timestamp) {
+            if (gameState === 'PLAYING') {
+                ctx.clearRect(0, 0, gameWidth, gameHeight);
+                drawWindBanner();
+
+                const mult = getDifficultyMultiplier();
+                const currentSpawnInterval = Math.max(200, baseSpawnInterval / mult);
+
+                if (timestamp - lastSpawnTime > currentSpawnInterval) {
+                    spawnItem();
+                    lastSpawnTime = timestamp;
+                }
+
+                checkCollisions();
+                updateParticles();
+                updateFloatingTexts();
+
+                drawItems();
+                drawCup();
+                drawParticles();
+                drawFloatingTexts();
+
+                animationFrameId = requestAnimationFrame(render);
+            }
+        }
+
+        function updateHUD() {
+            if (scoreText) scoreText.textContent = score;
+            const progressPercent = Math.min(100, (score / TARGET_SCORE) * 100);
+            if (progressBar) progressBar.style.width = `${progressPercent}%`;
+
+            const mult = getDifficultyMultiplier();
+            if (speedLevelText) {
+                if (mult > 1.25) {
+                    speedLevelText.classList.remove('hidden');
+                    speedLevelText.textContent = `⚡ SPEED x${mult.toFixed(1)}`;
+                } else {
+                    speedLevelText.classList.add('hidden');
+                }
+            }
+
+            if (livesContainer) {
+                let heartsHtml = '';
+                for (let i = 0; i < 3; i++) {
+                    if (i < lives) {
+                        heartsHtml += '<i class="fas fa-heart text-red-500"></i>';
+                    } else {
+                        heartsHtml += '<i class="far fa-heart text-slate-600"></i>';
+                    }
+                }
+                livesContainer.innerHTML = heartsHtml;
+            }
+        }
+
+        function startGame() {
+            sfx.init();
+            resizeCanvas();
+            score = 0;
+            lives = 3;
+            timeLeft = GAME_DURATION;
+            fallingItems = [];
+            particles = [];
+            floatingTexts = [];
+            gameState = 'PLAYING';
+
+            if (startScreen) startScreen.classList.add('hidden');
+            if (winScreen) winScreen.classList.add('hidden');
+            if (loseScreen) loseScreen.classList.add('hidden');
+            if (hudBar) hudBar.classList.remove('hidden');
+            if (progressContainer) progressContainer.classList.remove('hidden');
+
+            updateHUD();
+            if (timerText) timerText.textContent = `${timeLeft}s`;
+
+            clearInterval(gameTimerInterval);
+            gameTimerInterval = setInterval(() => {
+                timeLeft--;
+                if (timerText) {
+                    timerText.textContent = `${timeLeft}s`;
+                    if (timeLeft <= 5) {
+                        timerText.classList.add('text-red-400');
+                    } else {
+                        timerText.classList.remove('text-red-400');
+                    }
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimerInterval);
+                    if (score >= TARGET_SCORE) {
+                        endGame(true);
+                    } else {
+                        endGame(false);
+                    }
+                }
+            }, 1000);
+
+            lastSpawnTime = performance.now();
+            requestAnimationFrame(render);
+        }
+
+        function generateVoucherCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = 'MIX-';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return code;
+        }
+
+        function endGame(isWin) {
+            gameState = isWin ? 'WIN' : 'LOSE';
+            clearInterval(gameTimerInterval);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            if (hudBar) hudBar.classList.add('hidden');
+            if (progressContainer) progressContainer.classList.add('hidden');
+
+            if (isWin || score >= TARGET_SCORE) {
+                sfx.playWin();
+                const code = generateVoucherCode();
+                if (voucherCode) voucherCode.textContent = code;
+                if (winScreen) winScreen.classList.remove('hidden');
+
+                try {
+                    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                } catch(e) {}
+            } else {
+                if (finalScoreText) finalScoreText.textContent = score;
+                if (loseScreen) loseScreen.classList.remove('hidden');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.textContent = msg;
+            toast.classList.remove('hidden');
+
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2200);
+        }
+
+        function copyVoucherCode() {
+            const code = voucherCode ? voucherCode.textContent : '';
+            const tempInput = document.createElement('input');
+            tempInput.value = code;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showToast('Kode Voucher "' + code + '" berhasil disalin!');
+        }
+
+        function initGame() {
+            initDOMElements();
+            attachEventListeners();
+            resizeCanvas();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGame);
+        } else {
+            initGame();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('load', resizeCanvas);
+    </script>
+</body>
+</html>
